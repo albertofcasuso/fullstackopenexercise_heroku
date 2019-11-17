@@ -1,14 +1,24 @@
 const express = require('express')
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
+
+//Modulo para permitir la comunicacion de diferentes orígenes
 const cors = require('cors')
 
+//modulo para importar dotenv con variables globales
+require('dotenv').config()
+
+// modulo que se conecta con la base de datos
+const Person = require('./models/person')
+
+//Acaba conexion con mongo db
 const app = express()
 
 app.use(bodyParser.json())
 app.use(express.static('build'))
 app.use(cors())
 
+//Console logs with morgan
 morgan.token('body', function getBody (req) {
   return JSON.stringify(req.body)
 })
@@ -45,7 +55,7 @@ let persons = [
 ]
 
 app.get('/api/persons', (req, res) => {
-  res.json(persons)
+  Person.find({}).then(person =>res.json(person.map(person => person.toJSON())) )
 })
 
 app.get('/info',(req, res)=>{
@@ -72,9 +82,17 @@ app.delete('/api/persons/:id', (request, response) => {
 })
 
 
-
+// POST operation
 app.post('/api/persons', (request, response) => {
-
+  const body = request.body
+  const person = new Person({
+    name: body.name,
+    number: body.number,
+  })
+  person.save().then(savedPerson=>{
+    response.json(savedPerson.toJSON())
+  })
+/*
   const randomId =(max) =>{
     return Math.floor(Math.random()*Math.floor(max))
   }
@@ -102,9 +120,10 @@ app.post('/api/persons', (request, response) => {
     })
     :null
   }
+*/
 })
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })
