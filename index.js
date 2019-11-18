@@ -6,7 +6,9 @@ const morgan = require('morgan')
 const cors = require('cors')
 
 //modulo para importar dotenv con variables globales
-require('dotenv').config()
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config()
+}
 
 // modulo que se conecta con la base de datos
 const Person = require('./models/person')
