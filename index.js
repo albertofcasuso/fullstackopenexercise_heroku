@@ -14,8 +14,8 @@ const Person = require('./models/person')
 //Acaba conexion con mongo db
 const app = express()
 
-app.use(bodyParser.json())
 app.use(express.static('build'))
+app.use(bodyParser.json())
 app.use(cors())
 
 //Console logs with morgan
@@ -24,8 +24,7 @@ morgan.token('body', function getBody (req) {
 })
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms, :body'))
 
-
-
+/* Dummy data, una tabla con nombres
 let persons = [
   {
     "name": "marian",
@@ -54,31 +53,59 @@ let persons = [
   }
 ]
 
+*/
+
 app.get('/api/persons', (req, res) => {
   Person.find({}).then(person =>res.json(person.map(person => person.toJSON())) )
 })
 
 app.get('/info',(req, res)=>{
-  const length = persons.length
-  const fecha = new Date()
-  res.send(`
-    <p>The page has info for ${length} people</p>
-    <p>${fecha}</p>`)
+  Person.find({}).then(person=>{
+    const length = person.length
+    const fecha = new Date()
+    res.send(`
+      <p>The page has info for ${length} people</p>
+      <p>${fecha}</p>`).end()
+  })
+
+
+
 })
 
-app.get('/api/persons/:id',(request, response)=>{
+app.get('/api/persons/:id',(request, response, next)=>{
+  Person.findById(request.params.id).then(person=>{
+    if(person){response.json(person.toJSON())}
+    else{
+      response.status(404).send({error:'unknownEndpoint'}).end()
+    }
+  })
+  .catch(error=>{
+    next(error)
+  })
+})
+  /*
   const id = Number(request.params.id)
+  console.log(request.params.id)
   const person = persons.find(person=>person.id === id)
   person?
   response.json(person)
   :response.status(404).end()
-})
+  */
 
-app.delete('/api/persons/:id', (request, response) => {
+//DELETE
+app.delete('/api/persons/:id', (request, response, next) => {
+  Person.findByIdAndRemove(request.params.id).then(person=>{
+    response.status(204).end()
+  }).catch(error=>{
+    next(error)
+  })
+
+  /*
   const id = Number(request.params.id)
   persons = persons.filter(person => person.id !== id)
 
   response.status(204).end()
+  */
 })
 
 
@@ -122,6 +149,34 @@ app.post('/api/persons', (request, response) => {
   }
 */
 })
+
+app.put('/api/persons/:id',(request,response,next)=>{
+  const body = request.body
+
+//findByIdAndUpdate no va a recibir un nuevo objeto persona, si no un objeto de javascript normal.
+  const newPerson = {
+    name: body.name,
+    number: body.number,
+  }
+
+  Person.findByIdAndUpdate(request.params.id,newPerson,{new:true}).then(person=>{
+    if(person){
+      response.json(person.toJSON())
+    }else{
+      response.status(404).end()
+    }
+  }).catch(error =>{
+    console.log('error aqui')
+    next(error)
+  })
+})
+
+const errorHandler = (error,request,response,next) => {
+  console.log(error.message)
+  response.status(400).send({ error: 'Petición malformada' })
+}
+app.use(errorHandler)
+
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {

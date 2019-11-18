@@ -1,5 +1,7 @@
 const mongoose = require('mongoose')
 
+mongoose.set('useUnifiedTopology', true)
+
 const url = process.env.MONGODB_URI
 
 console.log('connecting to', url)
