@@ -2,10 +2,12 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
 
+
 //Modulo para permitir la comunicacion de diferentes orígenes
 const cors = require('cors')
 
 //modulo para importar dotenv con variables globales
+//Solo requiere cargar este modulo si no está en producción
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config()
 }
@@ -26,36 +28,6 @@ morgan.token('body', function getBody (req) {
 })
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms, :body'))
 
-/* Dummy data, una tabla con nombres
-let persons = [
-  {
-    "name": "marian",
-    "number": "23329823",
-    "id": 1
-  },
-  {
-    "name": "mazdey",
-    "number": "2913892819",
-    "id": 2
-  },
-  {
-    "name": "casuso",
-    "number": "666",
-    "id": 3
-  },
-  {
-    "name": "alberto",
-    "number": "5542438754",
-    "id": 4
-  },
-  {
-    "name": "satan",
-    "number": "666",
-    "id": 5
-  }
-]
-
-*/
 
 app.get('/api/persons', (req, res) => {
   Person.find({}).then(person =>res.json(person.map(person => person.toJSON())) )
@@ -69,9 +41,6 @@ app.get('/info',(req, res)=>{
       <p>The page has info for ${length} people</p>
       <p>${fecha}</p>`).end()
   })
-
-
-
 })
 
 app.get('/api/persons/:id',(request, response, next)=>{
@@ -85,15 +54,6 @@ app.get('/api/persons/:id',(request, response, next)=>{
     next(error)
   })
 })
-  /*
-  const id = Number(request.params.id)
-  console.log(request.params.id)
-  const person = persons.find(person=>person.id === id)
-  person?
-  response.json(person)
-  :response.status(404).end()
-  */
-
 //DELETE
 app.delete('/api/persons/:id', (request, response, next) => {
   Person.findByIdAndRemove(request.params.id).then(person=>{
@@ -101,26 +61,19 @@ app.delete('/api/persons/:id', (request, response, next) => {
   }).catch(error=>{
     next(error)
   })
-
-  /*
-  const id = Number(request.params.id)
-  persons = persons.filter(person => person.id !== id)
-
-  response.status(204).end()
-  */
 })
 
 
 // POST operation
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response,next) => {
   const body = request.body
   const person = new Person({
     name: body.name,
     number: body.number,
   })
   person.save().then(savedPerson=>{
-    response.json(savedPerson.toJSON())
-  })
+      response.json(savedPerson.toJSON())
+  }).catch(error=>next(error))
 /*
   const randomId =(max) =>{
     return Math.floor(Math.random()*Math.floor(max))
@@ -174,8 +127,10 @@ app.put('/api/persons/:id',(request,response,next)=>{
 })
 
 const errorHandler = (error,request,response,next) => {
-  console.log(error.message)
-  response.status(400).send({ error: 'Petición malformada' })
+  if (error.name === 'CastError' && error.kind == 'ObjectId') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'ValidationError') {    
+    return response.status(400).json({ error: error.message })  }
 }
 app.use(errorHandler)
 
